@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>حسابداری هلو - نسخه وب</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = { darkMode: 'class' };
+    </script>
+    <style>
+        body, .bg-white, .bg-gray-50, .bg-gray-100 {
+            transition: background-color 0.3s, color 0.3s;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200">
+
+    <header class="bg-white dark:bg-gray-800 shadow">
+        <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+            <h1 class="text-xl font-bold">حسابداری هلو - نسخه وب</h1>
+            <button id="theme-switcher" class="p-2 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200"></button>
+        </div>
+    </header>
+
+    <main class="container mx-auto p-4">
+        <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md mb-6">
+            <h2 id="form-title" class="text-xl font-semibold mb-4">افزودن محصول جدید</h2>
+            <form id="product-form" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <input type="hidden" id="product-id">
+                <input type="text" id="name" placeholder="نام محصول" class="p-2 border rounded bg-gray-50 dark:bg-gray-700 dark:border-gray-600" required>
+                <input type="number" id="purchasePrice" placeholder="قیمت خرید" class="p-2 border rounded bg-gray-50 dark:bg-gray-700 dark:border-gray-600" required>
+                <input type="number" id="sellingPrice" placeholder="قیمت فروش" class="p-2 border rounded bg-gray-50 dark:bg-gray-700 dark:border-gray-600" required>
+                <input type="number" id="stock" placeholder="موجودی" class="p-2 border rounded bg-gray-50 dark:bg-gray-700 dark:border-gray-600" required>
+                <div class="md:col-span-2 flex items-center gap-4">
+                    <button type="submit" id="submit-button" class="bg-blue-500 text-white p-2 rounded hover:bg-blue-600 flex-grow">افزودن محصول</button>
+                    <button type="button" id="cancel-button" class="bg-gray-300 dark:bg-gray-600 p-2 rounded hover:bg-gray-400 dark:hover:bg-gray-500 hidden">لغو</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+            <h2 class="text-xl font-semibold mb-4">لیست محصولات</h2>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                    <thead class="bg-gray-50 dark:bg-gray-700">
+                        <tr>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">نام</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">قیمت خرید</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">قیمت فروش</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">موجودی</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">عملیات</th>
+                        </tr>
+                    </thead>
+                    <tbody id="product-table-body" class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- DOM Elements ---
+            const form = document.getElementById('product-form');
+            const formTitle = document.getElementById('form-title');
+            const tableBody = document.getElementById('product-table-body');
+            const submitButton = document.getElementById('submit-button');
+            const cancelButton = document.getElementById('cancel-button');
+            const themeSwitcher = document.getElementById('theme-switcher');
+            const docElement = document.documentElement;
+
+            // --- Form Inputs ---
+            const productIdInput = document.getElementById('product-id');
+            const nameInput = document.getElementById('name');
+            const purchasePriceInput = document.getElementById('purchasePrice');
+            const sellingPriceInput = document.getElementById('sellingPrice');
+            const stockInput = document.getElementById('stock');
+
+            // --- App State ---
+            let products = [];
+            let isEditing = false;
+            let currentTheme = localStorage.getItem('theme') || 'light';
+
+            // --- Functions ---
+
+            // Save products to localStorage
+            const saveProducts = () => {
+                localStorage.setItem('products', JSON.stringify(products));
+            };
+
+            // Load products from localStorage
+            const loadProducts = () => {
+                const storedProducts = localStorage.getItem('products');
+                if (storedProducts) {
+                    products = JSON.parse(storedProducts);
+                }
+            };
+
+            // Render the product table
+            const renderTable = () => {
+                tableBody.innerHTML = '';
+                if (products.length === 0) {
+                    tableBody.innerHTML = '<tr><td colspan="5" class="text-center py-4">محصولی یافت نشد.</td></tr>';
+                    return;
+                }
+                products.forEach(product => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td class="px-6 py-4 whitespace-nowrap">${product.name}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">${product.purchasePrice}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">${product.sellingPrice}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">${product.stock}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <button onclick="editProduct(${product.id})" class="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300 mr-4">ویرایش</button>
+                            <button onclick="deleteProduct(${product.id})" class="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300">حذف</button>
+                        </td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+            };
+
+            // Reset the form to its initial state
+            const resetForm = () => {
+                form.reset();
+                productIdInput.value = '';
+                isEditing = false;
+                formTitle.textContent = 'افزودن محصول جدید';
+                submitButton.textContent = 'افزودن محصول';
+                cancelButton.classList.add('hidden');
+            };
+
+            // Handle form submission (Add or Update)
+            const handleFormSubmit = (e) => {
+                e.preventDefault();
+                const productData = {
+                    name: nameInput.value,
+                    purchasePrice: parseFloat(purchasePriceInput.value),
+                    sellingPrice: parseFloat(sellingPriceInput.value),
+                    stock: parseInt(stockInput.value)
+                };
+
+                if (isEditing) {
+                    // Update existing product
+                    const idToUpdate = parseInt(productIdInput.value);
+                    products = products.map(p => p.id === idToUpdate ? { ...p, ...productData } : p);
+                } else {
+                    // Add new product
+                    productData.id = Date.now(); // Simple unique ID
+                    products.push(productData);
+                }
+
+                saveProducts();
+                renderTable();
+                resetForm();
+            };
+
+            // Prepare the form for editing a product
+            window.editProduct = (id) => {
+                const product = products.find(p => p.id === id);
+                if (!product) return;
+
+                isEditing = true;
+                productIdInput.value = product.id;
+                nameInput.value = product.name;
+                purchasePriceInput.value = product.purchasePrice;
+                sellingPriceInput.value = product.sellingPrice;
+                stockInput.value = product.stock;
+
+                formTitle.textContent = 'ویرایش محصول';
+                submitButton.textContent = 'ذخیره تغییرات';
+                cancelButton.classList.remove('hidden');
+            };
+
+            // Delete a product
+            window.deleteProduct = (id) => {
+                if (confirm('آیا از حذف این محصول اطمینان دارید؟')) {
+                    products = products.filter(p => p.id !== id);
+                    saveProducts();
+                    renderTable();
+                }
+            };
+
+            // Apply theme to the page
+            const applyTheme = () => {
+                localStorage.setItem('theme', currentTheme);
+                if (currentTheme === 'dark') {
+                    docElement.classList.add('dark');
+                    themeSwitcher.innerHTML = '☀️'; // Sun icon for light mode
+                } else {
+                    docElement.classList.remove('dark');
+                    themeSwitcher.innerHTML = '🌙'; // Moon icon for dark mode
+                }
+            };
+
+            // Toggle theme
+            const toggleTheme = () => {
+                currentTheme = currentTheme === 'light' ? 'dark' : 'light';
+                applyTheme();
+            };
+
+            // --- Initial Setup ---
+            form.addEventListener('submit', handleFormSubmit);
+            cancelButton.addEventListener('click', resetForm);
+            themeSwitcher.addEventListener('click', toggleTheme);
+
+            loadProducts();
+            renderTable();
+            applyTheme();
+        });
+    </script>
+</body>
+</html>
